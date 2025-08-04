@@ -10,44 +10,29 @@ interface SensorTableProps {
 }
 
 const SensorTable: React.FC<SensorTableProps> = ({ schema, readings, latestReading }) => {
-  const formatValue = (value: any, fieldType: string): string => {
+  const formatValue = (value: any): string => {
     if (value === null || value === undefined) {
       return '-';
     }
     
-    // Format based on field type
-    switch (fieldType) {
-      case 'DecimalField':
-      case 'FloatField':
-        return typeof value === 'number' ? value.toFixed(2) : String(value);
-      case 'DateTimeField':
-        return value ? new Date(value).toLocaleString() : '-';
-      case 'BooleanField':
-        return value ? 'Yes' : 'No';
-      default:
-        return String(value);
+    // Format numbers to max 4 decimal places
+    if (typeof value === 'number') {
+      return value.toFixed(Math.min(4, (value.toString().split('.')[1] || '').length));
     }
+    
+    return String(value);
   };
 
-  const formatHeader = (fieldName: string): string => {
-    return fieldName
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  // Get display fields (exclude auto fields like auto_now, auto_now_add)
-  const displayFields = schema.fields.filter(field => 
-    !field.auto_now && !field.auto_now_add
-  );
-
-  if (!schema.fields || schema.fields.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No schema available
-      </div>
-    );
-  }
+  // Define the fields we want to display
+  const displayFields = [
+    { name: 'pH', label: 'pH Level', key: 'pH' },
+    { name: 'Turbidity', label: 'Turbidity (NTU)', key: 'turbidity' },
+    { name: 'Conductivity', label: 'Conductivity (µS/cm)', key: 'conductivity' },
+    { name: 'Cyanide', label: 'Cyanide (mg/L)', key: 'ise' },
+    { name: 'Mercury Level', label: 'Mercury Level (mg/L)', key: 'value' },
+    { name: 'Device', label: 'Device', key: 'device' },
+    { name: 'Timestamp', label: 'Timestamp', key: 'timestamp' }
+  ];
 
   // Combine all readings with latest at top if it's new
   const allData = latestReading ? [latestReading, ...readings.filter(r => r.id !== latestReading.id)] : readings;
@@ -59,7 +44,7 @@ const SensorTable: React.FC<SensorTableProps> = ({ schema, readings, latestReadi
           <TableRow>
             {displayFields.map((field) => (
               <TableHead key={field.name}>
-                {formatHeader(field.name)}
+                {field.label}
               </TableHead>
             ))}
           </TableRow>
@@ -82,7 +67,10 @@ const SensorTable: React.FC<SensorTableProps> = ({ schema, readings, latestReadi
               >
                 {displayFields.map((field) => (
                   <TableCell key={field.name}>
-                    {formatValue(reading[field.name], field.type)}
+                    {field.key === 'timestamp' 
+                      ? (reading[field.key] ? new Date(reading[field.key]).toLocaleString() : '-')
+                      : formatValue(reading[field.key])
+                    }
                   </TableCell>
                 ))}
               </TableRow>

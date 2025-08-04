@@ -28,17 +28,11 @@ const RealTimeDataWidget = () => {
       </CardHeader>
       <CardContent>
         {latestData ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
               <p className="text-sm font-medium">pH Level</p>
               <p className="text-2xl font-bold text-river-blue-light">
-                {latestData.pH.toFixed(1)}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Temperature</p>
-              <p className="text-2xl font-bold text-river-success">
-                {latestData.temperature.toFixed(1)}°C
+                {latestData.pH.toFixed(2)}
               </p>
             </div>
             <div className="space-y-1">
@@ -48,9 +42,21 @@ const RealTimeDataWidget = () => {
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium">Dissolved O₂</p>
+              <p className="text-sm font-medium">Conductivity</p>
+              <p className="text-2xl font-bold text-river-success">
+                {latestData.conductivity?.toFixed(1) || '0.0'} µS/cm
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Cyanide</p>
+              <p className="text-2xl font-bold text-river-danger">
+                {latestData.ise?.toFixed(3) || '0.000'} mg/L
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Mercury Level</p>
               <p className="text-2xl font-bold text-river-purple-light">
-                {latestData.dissolvedOxygen.toFixed(1)} mg/L
+                {latestData.value?.toFixed(3) || '0.000'} mg/L
               </p>
             </div>
           </div>

@@ -22,7 +22,7 @@ const SensorDashboard: React.FC = () => {
   };
 
   // Loading states
-  const isDataLoading = loading || !isConnected || sensorData.length === 0;
+  const isDataLoading = loading && sensorData.length === 0; // Only show loading if REST is loading AND no WebSocket data
   const isConnecting = !isConnected && !wsError;
 
   return (
@@ -71,8 +71,8 @@ const SensorDashboard: React.FC = () => {
             Model: <code className="bg-background px-1 rounded">{schema.model}</code>
           </p>
           <p className="text-sm text-muted-foreground">
-            Fields: <code className="bg-background px-1 rounded">
-              {schema.fields.map(f => f.name).join(', ')}
+            Monitoring Fields: <code className="bg-background px-1 rounded">
+              pH Level, Turbidity, Conductivity, Cyanide, Mercury Level
             </code>
           </p>
         </div>
@@ -104,11 +104,19 @@ const SensorDashboard: React.FC = () => {
             )}
           </div>
         </div>
+      ) : sensorData.length > 0 ? (
+        // Show table with WebSocket data if available
+        <SensorTable 
+          schema={schema || { model: 'SensorReading', fields: [] }} 
+          readings={sensorData}
+          latestReading={sensorData[sensorData.length - 1]}
+        />
       ) : schema ? (
+        // Show table with REST data if no WebSocket data
         <SensorTable 
           schema={schema} 
-          readings={sensorData.length > 0 ? sensorData : sensors}
-          latestReading={sensorData.length > 0 ? sensorData[sensorData.length - 1] : null}
+          readings={sensors}
+          latestReading={null}
         />
       ) : (
         <div className="text-center py-8 text-muted-foreground">

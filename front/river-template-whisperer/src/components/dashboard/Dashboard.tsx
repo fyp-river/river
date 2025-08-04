@@ -96,21 +96,19 @@ const Dashboard: React.FC = () => {
   // Calculate derived metrics from sensor data
   const waterQualityData = latestReading ? {
     ph: Number((latestReading.pH || 7.0).toFixed(Math.min(4, (latestReading.pH || 7.0).toString().split('.')[1]?.length || 0))),
-    dissolvedOxygen: Number((latestReading.dissolvedOxygen || 8.0).toFixed(Math.min(4, (latestReading.dissolvedOxygen || 8.0).toString().split('.')[1]?.length || 0))),
-    temperature: Number((latestReading.temperature || 18.5).toFixed(Math.min(4, (latestReading.temperature || 18.5).toString().split('.')[1]?.length || 0))),
     turbidity: Number((latestReading.turbidity || 2.0).toFixed(Math.min(4, (latestReading.turbidity || 2.0).toString().split('.')[1]?.length || 0))),
-    // Simulate additional metrics
-    flowRate: Number((15 + (latestReading.temperature - 18) * 2.5).toFixed(Math.min(4, (15 + (latestReading.temperature - 18) * 2.5).toString().split('.')[1]?.length || 0))), // Derived from temperature
-    leadLevel: Number((Math.max(0.001, latestReading.turbidity * 0.002)).toFixed(Math.min(4, (Math.max(0.001, latestReading.turbidity * 0.002)).toString().split('.')[1]?.length || 0))), // Derived from turbidity
-    cyanide: Number((Math.max(0.001, (8.5 - latestReading.dissolvedOxygen) * 0.001)).toFixed(Math.min(4, (Math.max(0.001, (8.5 - latestReading.dissolvedOxygen) * 0.001)).toString().split('.')[1]?.length || 0))) // Derived from oxygen
+    // Use conductivity field for conductivity display
+    conductivity: Number((latestReading.conductivity || 0.0).toFixed(Math.min(4, (latestReading.conductivity || 0.0).toString().split('.')[1]?.length || 0))),
+    // Use ise value for cyanide
+    cyanide: Number((latestReading.ise || 0.0).toFixed(Math.min(4, (latestReading.ise || 0.0).toString().split('.')[1]?.length || 0))),
+    // Use value field for lead level
+    leadLevel: Number((latestReading.value || 0.0).toFixed(Math.min(4, (latestReading.value || 0.0).toString().split('.')[1]?.length || 0)))
   } : {
     ph: 7.0,
-    dissolvedOxygen: 8.0,
-    temperature: 18.5,
     turbidity: 2.0,
-    flowRate: 20.0,
-    leadLevel: 0.005,
-    cyanide: 0.002
+    conductivity: 0.0,
+    cyanide: 0.0,
+    leadLevel: 0.0
   };
 
   return (
@@ -218,10 +216,10 @@ const Dashboard: React.FC = () => {
       <RealTimeDataWidget />
       
       {/* Water quality metrics - now using real sensor data */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {isDataLoading ? (
           // Loading spinners for water quality cards
-          Array.from({ length: 6 }).map((_, index) => (
+          Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="river-data-card river-glow min-h-32 flex items-center justify-center">
               <div className="text-center">
                 <PulseLoader size={8} color="#3B82F6" />
@@ -240,22 +238,6 @@ const Dashboard: React.FC = () => {
               type="ph" 
             />
             <WaterQualityCard 
-              title="Dissolved Oxygen" 
-              value={waterQualityData.dissolvedOxygen} 
-              unit="mg/L" 
-              change={latestReading ? (waterQualityData.dissolvedOxygen - 8.0) : 0} 
-              status={waterQualityData.dissolvedOxygen >= 6 ? "positive" : "negative"} 
-              type="oxygen" 
-            />
-            <WaterQualityCard 
-              title="Temperature" 
-              value={waterQualityData.temperature} 
-              unit="°C" 
-              change={latestReading ? (waterQualityData.temperature - 18.5) : 0} 
-              status={waterQualityData.temperature < 25 ? "positive" : "negative"} 
-              type="temperature" 
-            />
-            <WaterQualityCard 
               title="Turbidity" 
               value={waterQualityData.turbidity} 
               unit="NTU" 
@@ -264,15 +246,23 @@ const Dashboard: React.FC = () => {
               type="turbidity" 
             />
             <WaterQualityCard 
-              title="Flow Rate" 
-              value={waterQualityData.flowRate} 
-              unit="m³/s" 
-              change={latestReading ? (waterQualityData.flowRate - 20) : 0} 
+              title="Conductivity" 
+              value={waterQualityData.conductivity} 
+              unit="µS/cm" 
+              change={latestReading ? (waterQualityData.conductivity - 20) : 0} 
               status="neutral" 
               type="flow" 
             />
             <WaterQualityCard 
-              title="Lead Level" 
+              title="Cyanide" 
+              value={waterQualityData.cyanide} 
+              unit="mg/L" 
+              change={latestReading ? (waterQualityData.cyanide - 0.002) : 0} 
+              status={waterQualityData.cyanide < 0.01 ? "positive" : "negative"} 
+              type="lead" 
+            />
+            <WaterQualityCard 
+              title="Mercury Level" 
               value={waterQualityData.leadLevel} 
               unit="mg/L" 
               change={latestReading ? (waterQualityData.leadLevel - 0.005) : 0} 
@@ -302,14 +292,14 @@ const Dashboard: React.FC = () => {
             <div className="river-data-card river-glow h-64 flex items-center justify-center">
               <div className="text-center">
                 <PulseLoader size={8} color="#3B82F6" />
-                <p className="text-sm text-muted-foreground mt-2">Loading flow gauge...</p>
+                <p className="text-sm text-muted-foreground mt-2">Loading conductivity gauge...</p>
               </div>
             </div>
           ) : (
             <WaterFlowGauge 
-              value={waterQualityData.flowRate} 
-              maxValue={50} 
-              title="Current Flow Rate" 
+              value={waterQualityData.conductivity} 
+              maxValue={200} 
+              title="Current Conductivity" 
             />
           )}
         </div>

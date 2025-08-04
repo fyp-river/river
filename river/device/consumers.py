@@ -72,7 +72,38 @@ class SensorDataConsumer(AsyncWebsocketConsumer):
         print("Dashboard received:", data)  # Optional for debugging
 
     async def send_sensor_data(self, event):
-        await self.send(text_data=json.dumps(event["data"]))
+        """Handle sensor data from MQTT and send to frontend"""
+        try:
+            data = event["data"]
+            device_id = data.get("device_id", "unknown")
+            timestamp = data.get("timestamp") or timezone.now().isoformat()
+            sensor_data = data.get("data", {})
+            
+            # Format the data to match frontend expectations
+            formatted_data = {
+                "type": "sensor_data",
+                "device_id": device_id,
+                "timestamp": timestamp,
+                "data": {
+                    "ph": sensor_data.get("ph", 0.0),
+                    "temperature": sensor_data.get("temperature", 0.0),
+                    "turbidity": sensor_data.get("turbidity", 0.0),
+                    "dissolved_oxygen": sensor_data.get("dissolved_oxygen", 0.0),
+                    "ise": sensor_data.get("ise", 0.0),  # Cyanide (from ise_value)
+                    "conductivity": sensor_data.get("tds", 0.0),  # Conductivity (from conductivity)
+                    "orp": sensor_data.get("orp", 0.0),
+                    "ec": sensor_data.get("ec", 0.0),  # Also conductivity
+                    "value": sensor_data.get("value", 0.0)  # Lead level (from mercury_ppb)
+                }
+            }
+            
+            print(f"[WebSocket] 📡 Sending sensor data to frontend: {formatted_data}")
+            await self.send(text_data=json.dumps(formatted_data))
+            
+        except Exception as e:
+            print(f"[WebSocket] ❌ Error sending sensor data: {e}")
+            import traceback
+            traceback.print_exc()
 
     @sync_to_async
     def get_recent_sensor_data(self):
@@ -133,11 +164,11 @@ class SensorDataConsumer(AsyncWebsocketConsumer):
                         "temperature": format_value(reading.temperature),
                         "turbidity": format_value(reading.turbidity),
                         "dissolved_oxygen": format_value(reading.dissolved_oxygen),
-                        "ise": format_value(reading.ise),
-                        "tds": format_value(reading.tds),
+                        "ise": format_value(reading.ise),  # Cyanide
+                        "conductivity": format_value(reading.tds),  # Conductivity
                         "orp": format_value(reading.orp),
-                        "ec": format_value(reading.ec),
-                        "value": format_value(reading.value)
+                        "ec": format_value(reading.ec),  # Also conductivity
+                        "value": format_value(reading.value)  # Lead level
                     }
                 }
                 

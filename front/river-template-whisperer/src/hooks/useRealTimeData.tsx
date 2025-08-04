@@ -12,7 +12,7 @@ export interface WaterQualityData {
   device?: string;
   manual_override?: boolean;
   ise?: number | null;
-  tds?: number | null;
+  conductivity?: number | null;
   orp?: number | null;
   ec?: number | null;
   value?: number | null;

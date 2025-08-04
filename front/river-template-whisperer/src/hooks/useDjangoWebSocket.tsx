@@ -36,7 +36,7 @@ export const useDjangoWebSocket = () => {
               device: djangoMessage.device_id || 'unknown',
               manual_override: false,
               ise: djangoMessage.data.ise || null,
-              tds: djangoMessage.data.tds || null,
+              conductivity: djangoMessage.data.conductivity || null,
               orp: djangoMessage.data.orp || null,
               ec: djangoMessage.data.ec || null,
               value: djangoMessage.data.value || null
