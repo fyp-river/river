@@ -1,12 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 
 export interface WaterQualityData {
+  id?: number;
   timestamp: string;
   pH: number;
   temperature: number;
   turbidity: number;
   dissolvedOxygen: number;
   stationId: string;
+  sensor?: string;
+  device?: string;
+  manual_override?: boolean;
+  ise?: number | null;
+  tds?: number | null;
+  orp?: number | null;
+  ec?: number | null;
+  value?: number | null;
 }
 
 export const useRealTimeData = (enableRealTime: boolean = true) => {

@@ -1,179 +1,134 @@
 
-import React from 'react';
-import Header from '@/components/Header';
-import WebSocketTester from '@/components/testing/WebSocketTester';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Copy, Terminal, AlertCircle, Wifi, WifiOff } from 'lucide-react';
-import { copyDjangoCommands } from '@/utils/djangoShellCommands';
-import { toast } from '@/hooks/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useSensorWebSocket } from '@/hooks/useSensorWebSocket';
-import { useMapWebSocket } from '@/hooks/useMapWebSocket';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
 
 const WebSocketTestPage: React.FC = () => {
-  const sensorWs = useSensorWebSocket();
-  const mapWs = useMapWebSocket();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [testMessage, setTestMessage] = useState('');
+  const djangoWs = useDjangoWebSocket();
 
-  const handleCopyCommands = () => {
-    const success = copyDjangoCommands();
-    toast({
-      title: success ? "Commands copied!" : "Commands logged",
-      description: success 
-        ? "Django shell commands copied to clipboard" 
-        : "Django shell commands logged to console"
-    });
+  useEffect(() => {
+    if (djangoWs.sensorData.length > 0) {
+      const latestData = djangoWs.sensorData[djangoWs.sensorData.length - 1];
+      setMessages(prev => [...prev, {
+        type: 'sensor_data',
+        data: latestData,
+        timestamp: new Date().toISOString()
+      }]);
+    }
+  }, [djangoWs.sensorData]);
+
+  const sendTestMessage = () => {
+    if (testMessage.trim()) {
+      djangoWs.sendHeartbeat();
+      setMessages(prev => [...prev, {
+        type: 'sent',
+        data: testMessage,
+        timestamp: new Date().toISOString()
+      }]);
+      setTestMessage('');
+    }
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-river">
-      <Header />
-      <main className="flex-1 p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">WebSocket Testing</h1>
-          <p className="text-xs sm:text-sm md:text-base text-muted-foreground">
-            Test and debug WebSocket connections with the Django backend
-          </p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">WebSocket Test</h1>
+          <p className="text-muted-foreground">Test WebSocket connections and messages</p>
         </div>
-
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-xs sm:text-sm">
-            Make sure your Django backend is running on localhost:8000 with WebSocket support enabled.
-          </AlertDescription>
-        </Alert>
-
-        {/* Connection Status Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="river-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                {sensorWs.isConnected ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-red-500" />}
-                Sensor WebSocket
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${sensorWs.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-xs">{sensorWs.isConnected ? 'Connected' : 'Disconnected'}</span>
-              </div>
-              {sensorWs.error && (
-                <div className="text-red-500 text-xs break-words">{sensorWs.error}</div>
-              )}
-              <div className="text-xs text-muted-foreground">
-                Readings: {sensorWs.allReadings.length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="river-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                {mapWs.isConnected ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-red-500" />}
-                Maps WebSocket
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${mapWs.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                <span className="text-xs">{mapWs.isConnected ? 'Connected' : 'Disconnected'}</span>
-              </div>
-              {mapWs.error && (
-                <div className="text-red-500 text-xs break-words">{mapWs.error}</div>
-              )}
-              <div className="text-xs text-muted-foreground">
-                Messages: {mapWs.mapData.length}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center gap-2">
+          <Badge variant={djangoWs.isConnected ? "default" : "destructive"}>
+            {djangoWs.isConnected ? "Connected" : "Disconnected"}
+          </Badge>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-          <div className="xl:col-span-2">
-            <WebSocketTester />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Connection Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Connection Status</CardTitle>
+            <CardDescription>WebSocket connection information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Django WebSocket:</span>
+              <Badge variant={djangoWs.isConnected ? "default" : "destructive"}>
+                {djangoWs.isConnected ? "Connected" : "Disconnected"}
+              </Badge>
+            </div>
+            {djangoWs.error && (
+              <div className="text-sm text-red-600">
+                Error: {djangoWs.error}
+              </div>
+            )}
+            <div className="text-sm text-muted-foreground">
+              Sensor Data Count: {djangoWs.sensorData.length}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Message Testing */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Send Test Message</CardTitle>
+            <CardDescription>Send a test message to the WebSocket</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-message">Message</Label>
+              <Textarea
+                id="test-message"
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                placeholder="Enter a test message..."
+              />
+            </div>
+            <Button onClick={sendTestMessage} disabled={!djangoWs.isConnected}>
+              Send Message
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Message Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Message Log</CardTitle>
+          <CardDescription>Recent WebSocket messages</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {messages.map((message, index) => (
+              <div key={index} className="p-3 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant={message.type === 'sent' ? 'default' : 'secondary'}>
+                    {message.type}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <pre className="text-sm bg-muted p-2 rounded overflow-x-auto">
+                  {JSON.stringify(message.data, null, 2)}
+                </pre>
+              </div>
+            ))}
+            {messages.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">
+                No messages yet
+              </div>
+            )}
           </div>
-          
-          <div className="space-y-4">
-            <Card className="river-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm sm:text-base lg:text-lg">
-                  <Terminal className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Django Shell Testing
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Use these commands in Django shell to test backend-to-frontend communication
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  onClick={handleCopyCommands}
-                  className="w-full flex items-center gap-2"
-                  size="sm"
-                >
-                  <Copy className="h-4 w-4" />
-                  <span className="text-xs sm:text-sm">Copy Shell Commands</span>
-                </Button>
-                <div className="text-xs sm:text-sm text-muted-foreground space-y-2">
-                  <p>1. Run Django shell:</p>
-                  <code className="block bg-muted p-2 rounded text-xs overflow-x-auto font-mono">
-                    python manage.py shell
-                  </code>
-                  <p>2. Then paste the copied commands</p>
-                  <p>3. Check the WebSocket tester for incoming messages</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="river-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Testing Checklist</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs sm:text-sm space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0"></div>
-                  <span>WebSocket connection status</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500 flex-shrink-0"></div>
-                  <span>Frontend → Backend messages</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-purple-500 flex-shrink-0"></div>
-                  <span>Backend → Frontend messages</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0"></div>
-                  <span>Echo/ping-pong responses</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0"></div>
-                  <span>Error handling & reconnection</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="river-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Connection Status</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs sm:text-sm space-y-2">
-                <div className="space-y-1">
-                  <div className="text-muted-foreground">Sensor WebSocket:</div>
-                  <div className="text-xs font-mono bg-muted p-1 rounded">
-                    {import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/sensors/'}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground">Maps WebSocket:</div>
-                  <div className="text-xs font-mono bg-muted p-1 rounded">
-                    {import.meta.env.VITE_WS_MAPS_URL || 'ws://localhost:8000/ws/maps/'}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
+        </CardContent>
+      </Card>
     </div>
   );
 };

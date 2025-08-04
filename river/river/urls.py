@@ -19,7 +19,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from device import views  
+from rest_framework.routers import DefaultRouter
 
+# Create a router and register our viewsets with it
+router = DefaultRouter()
+router.register(r'api/sensors', views.SensorReadingViewSet, basename='sensorreading')
+router.register(r'api/devices', views.DeviceViewSet, basename='device')
+router.register(r'api/mqtt-brokers', views.MQTTBrokerViewSet, basename='mqttbroker')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,5 +34,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('map/', include('maps.urls')),
     path('api/schema/sensor-reading/', views.get_sensor_schema, name='sensor_schema'), 
-    path('api/sensors/', views.SensorReading, name='SensorReading'),
 ]
+
+# Include the router URLs
+urlpatterns += router.urls

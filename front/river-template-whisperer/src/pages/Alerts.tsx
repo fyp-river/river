@@ -1,263 +1,219 @@
 
 import React, { useState, useEffect } from 'react';
-import Header from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert } from '@/types/alerts';
-import AlertSummary from '@/components/alerts/AlertSummary';
-import AlertBanner from '@/components/alerts/AlertBanner';
-import AlertTable from '@/components/alerts/AlertTable';
-import { useSensorWebSocket } from '@/hooks/useSensorWebSocket';
-import { useMapWebSocket } from '@/hooks/useMapWebSocket';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
-import { Alert as UIAlert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Bell, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
 
-const Alerts: React.FC = () => {
-  const [alertsList, setAlertsList] = useState<Alert[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('all');
-  
-  // WebSocket connections
-  const sensorWs = useSensorWebSocket();
-  const mapWs = useMapWebSocket();
+interface Alert {
+  id: string;
+  type: 'warning' | 'error' | 'info' | 'success';
+  title: string;
+  description: string;
+  timestamp: string;
+  device?: string;
+  resolved: boolean;
+}
 
-  // Generate alerts from sensor data
+const AlertsPage: React.FC = () => {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all');
+  const djangoWs = useDjangoWebSocket();
+
+  // Simulate alerts based on sensor data
   useEffect(() => {
-    if (sensorWs.allReadings.length > 0) {
-      const latestReading = sensorWs.allReadings[sensorWs.allReadings.length - 1];
+    if (djangoWs.sensorData.length > 0) {
+      const latestData = djangoWs.sensorData[djangoWs.sensorData.length - 1];
       const newAlerts: Alert[] = [];
 
-      // Check for critical pH levels
-      if (latestReading.pH < 6.0) {
+      // Check for water quality issues
+      if (latestData.pH < 6.5 || latestData.pH > 8.5) {
         newAlerts.push({
-          id: Date.now() + 1,
-          title: 'Critical pH Level',
-          type: 'critical',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `pH levels have fallen below critical threshold. Current: ${latestReading.pH}`,
-          acknowledged: false
-        });
-      } else if (latestReading.pH < 6.5 || latestReading.pH > 8.5) {
-        newAlerts.push({
-          id: Date.now() + 2,
-          title: 'pH Level Warning',
+          id: `ph-${Date.now()}`,
           type: 'warning',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `pH levels outside normal range. Current: ${latestReading.pH}`,
-          acknowledged: false
+          title: 'pH Level Alert',
+          description: `pH level is ${latestData.pH.toFixed(2)}, which is outside the normal range (6.5-8.5)`,
+          timestamp: latestData.timestamp,
+          device: latestData.stationId,
+          resolved: false
         });
       }
 
-      // Check for temperature alerts
-      if (latestReading.temperature > 25) {
+      if (latestData.dissolvedOxygen < 6.0) {
         newAlerts.push({
-          id: Date.now() + 3,
-          title: 'High Temperature Alert',
-          type: 'warning',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `Water temperature elevated. Current: ${latestReading.temperature}°C`,
-          acknowledged: false
-        });
-      }
-
-      // Check for turbidity alerts
-      if (latestReading.turbidity > 10) {
-        newAlerts.push({
-          id: Date.now() + 4,
-          title: 'High Turbidity Detected',
-          type: 'critical',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `Turbidity levels critical. Current: ${latestReading.turbidity} NTU`,
-          acknowledged: false
-        });
-      } else if (latestReading.turbidity > 5) {
-        newAlerts.push({
-          id: Date.now() + 5,
-          title: 'Elevated Turbidity',
-          type: 'warning',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `Turbidity levels elevated. Current: ${latestReading.turbidity} NTU`,
-          acknowledged: false
-        });
-      }
-
-      // Check for dissolved oxygen alerts
-      if (latestReading.dissolvedOxygen < 4) {
-        newAlerts.push({
-          id: Date.now() + 6,
-          title: 'Critical Dissolved Oxygen',
-          type: 'critical',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `Dissolved oxygen critically low. Current: ${latestReading.dissolvedOxygen} mg/L`,
-          acknowledged: false
-        });
-      } else if (latestReading.dissolvedOxygen < 6) {
-        newAlerts.push({
-          id: Date.now() + 7,
+          id: `do-${Date.now()}`,
+          type: 'error',
           title: 'Low Dissolved Oxygen',
+          description: `Dissolved oxygen level is ${latestData.dissolvedOxygen.toFixed(2)} mg/L, which is below the safe threshold`,
+          timestamp: latestData.timestamp,
+          device: latestData.stationId,
+          resolved: false
+        });
+      }
+
+      if (latestData.turbidity > 10) {
+        newAlerts.push({
+          id: `turbidity-${Date.now()}`,
           type: 'warning',
-          station: `Station ${latestReading.stationId}`,
-          timestamp: latestReading.timestamp,
-          description: `Dissolved oxygen below optimal. Current: ${latestReading.dissolvedOxygen} mg/L`,
-          acknowledged: false
+          title: 'High Turbidity',
+          description: `Turbidity level is ${latestData.turbidity.toFixed(2)} NTU, which indicates poor water clarity`,
+          timestamp: latestData.timestamp,
+          device: latestData.stationId,
+          resolved: false
         });
       }
 
-      // Update alerts list, avoiding duplicates
-      if (newAlerts.length > 0) {
-        setAlertsList(prev => {
-          const existing = prev.filter(alert => 
-            !newAlerts.some(newAlert => 
-              newAlert.title === alert.title && 
-              newAlert.station === alert.station &&
-              Math.abs(new Date(newAlert.timestamp).getTime() - new Date(alert.timestamp).getTime()) < 60000 // Within 1 minute
-            )
-          );
-          return [...existing, ...newAlerts].slice(-50); // Keep last 50 alerts
-        });
-      }
+      // Add new alerts to the list
+      setAlerts(prev => [...newAlerts, ...prev].slice(0, 50)); // Keep last 50 alerts
     }
-  }, [sensorWs.allReadings]);
+  }, [djangoWs.sensorData]);
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+  const resolveAlert = (alertId: string) => {
+    setAlerts(prev => prev.map(alert => 
+      alert.id === alertId ? { ...alert, resolved: true } : alert
+    ));
   };
 
-  // Filter alerts based on active tab
-  const filteredAlerts = alertsList.filter(alert => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'unacknowledged') return !alert.acknowledged;
-    return alert.type === activeTab;
+  const deleteAlert = (alertId: string) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+  };
+
+  const filteredAlerts = alerts.filter(alert => {
+    if (filter === 'active') return !alert.resolved;
+    if (filter === 'resolved') return alert.resolved;
+    return true;
   });
 
-  // Acknowledge an alert
-  const acknowledgeAlert = (id: number) => {
-    setAlertsList(prev => 
-      prev.map(alert => 
-        alert.id === id ? { ...alert, acknowledged: true } : alert
-      )
-    );
+  const getAlertIcon = (type: Alert['type']) => {
+    switch (type) {
+      case 'error': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      default: return <Bell className="h-4 w-4 text-blue-500" />;
+    }
   };
 
-  // Connection status
-  const isConnected = sensorWs.isConnected || mapWs.isConnected;
-  const hasError = sensorWs.error || mapWs.error;
+  const getAlertBadgeVariant = (type: Alert['type']) => {
+    switch (type) {
+      case 'error': return 'destructive';
+      case 'warning': return 'secondary';
+      case 'success': return 'default';
+      default: return 'outline';
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-river">
-      <Header />
-      <main className="flex-1 p-4 md:p-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-river-foreground">Alerts</h1>
-              <p className="text-muted-foreground">Real-time alerts from sensor monitoring</p>
-            </div>
-            
-            {/* Connection Status */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                {isConnected ? (
-                  <Wifi className="h-4 w-4 text-green-500" />
-                ) : (
-                  <WifiOff className="h-4 w-4 text-red-500" />
-                )}
-                <span className="text-sm">
-                  {isConnected ? 'Live Data' : 'Offline'}
-                </span>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Alerts</h1>
+          <p className="text-muted-foreground">Monitor water quality alerts and notifications</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant={djangoWs.isConnected ? "default" : "destructive"}>
+            {djangoWs.isConnected ? "Live" : "Offline"}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Connection Status */}
+      {!djangoWs.isConnected && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            WebSocket connection is offline. Alerts may not be real-time.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Filter Controls */}
+      <div className="flex gap-2">
+        <Button 
+          variant={filter === 'all' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setFilter('all')}
+        >
+          All ({alerts.length})
+        </Button>
+        <Button 
+          variant={filter === 'active' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setFilter('active')}
+        >
+          Active ({alerts.filter(a => !a.resolved).length})
+        </Button>
+        <Button 
+          variant={filter === 'resolved' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setFilter('resolved')}
+        >
+          Resolved ({alerts.filter(a => a.resolved).length})
+        </Button>
+      </div>
+
+      {/* Alerts List */}
+      <div className="space-y-4">
+        {filteredAlerts.map((alert) => (
+          <Card key={alert.id} className={alert.resolved ? 'opacity-60' : ''}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getAlertIcon(alert.type)}
+                  <div>
+                    <CardTitle className="text-lg">{alert.title}</CardTitle>
+                    <CardDescription>
+                      {new Date(alert.timestamp).toLocaleString()}
+                      {alert.device && ` • Device: ${alert.device}`}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={getAlertBadgeVariant(alert.type)}>
+                    {alert.type}
+                  </Badge>
+                  {alert.resolved && (
+                    <Badge variant="outline">Resolved</Badge>
+                  )}
+                </div>
               </div>
-              
-              <Button
-                onClick={() => {
-                  sensorWs.reconnect();
-                  mapWs.reconnect();
-                }}
-                variant="outline"
-                size="sm"
-                disabled={isConnected}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reconnect
-              </Button>
-            </div>
-          </div>
-
-          {/* Connection Error Alert */}
-          {hasError && (
-            <UIAlert variant="destructive" className="mb-6">
-              <AlertDescription>
-                WebSocket Error: {sensorWs.error || mapWs.error}
-              </AlertDescription>
-            </UIAlert>
-          )}
-
-          {/* No Data Alert */}
-          {!isConnected && alertsList.length === 0 && (
-            <UIAlert className="mb-6">
-              <AlertDescription>
-                No alerts available. Connect to the backend to receive real-time alerts from sensor readings.
-              </AlertDescription>
-            </UIAlert>
-          )}
-          
-          {/* Summary Cards */}
-          <AlertSummary alerts={alertsList} />
-          
-          {/* Critical Alert Banner */}
-          <AlertBanner alerts={alertsList} />
-          
-          <Card className="river-card">
-            <CardHeader className="pb-4">
-              <CardTitle>Alert Center</CardTitle>
-              <CardDescription>
-                Real-time alerts generated from sensor data and system monitoring
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-5 mb-8">
-                  <TabsTrigger value="all">All ({alertsList.length})</TabsTrigger>
-                  <TabsTrigger value="critical">
-                    Critical ({alertsList.filter(a => a.type === 'critical').length})
-                  </TabsTrigger>
-                  <TabsTrigger value="warning">
-                    Warning ({alertsList.filter(a => a.type === 'warning').length})
-                  </TabsTrigger>
-                  <TabsTrigger value="info">
-                    Info ({alertsList.filter(a => a.type === 'info').length})
-                  </TabsTrigger>
-                  <TabsTrigger value="unacknowledged">
-                    Unack. ({alertsList.filter(a => !a.acknowledged).length})
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value={activeTab}>
-                  <AlertTable 
-                    alerts={filteredAlerts}
-                    onAcknowledge={acknowledgeAlert}
-                    formatDate={formatDate}
-                  />
-                </TabsContent>
-              </Tabs>
+              <p className="text-sm text-muted-foreground mb-4">
+                {alert.description}
+              </p>
+              <div className="flex gap-2">
+                {!alert.resolved && (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => resolveAlert(alert.id)}
+                  >
+                    Mark Resolved
+                  </Button>
+                )}
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => deleteAlert(alert.id)}
+                >
+                  Delete
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </div>
-      </main>
+        ))}
+        
+        {filteredAlerts.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No alerts found</p>
+            <p className="text-sm">Alerts will appear here when water quality issues are detected</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default Alerts;
+export default AlertsPage;

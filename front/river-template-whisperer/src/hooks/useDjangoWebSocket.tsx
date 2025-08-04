@@ -24,12 +24,22 @@ export const useDjangoWebSocket = () => {
         case 'sensor_data':
           if (djangoMessage.data) {
             const newData: WaterQualityData = {
+              id: Date.now(), // Generate an ID for the table
               timestamp: djangoMessage.timestamp || new Date().toISOString(),
               pH: djangoMessage.data.ph || 0,
               temperature: djangoMessage.data.temperature || 0,
               turbidity: djangoMessage.data.turbidity || 0,
               dissolvedOxygen: djangoMessage.data.dissolved_oxygen || 0,
-              stationId: djangoMessage.device_id || 'unknown'
+              stationId: djangoMessage.device_id || 'unknown',
+              // Add other fields that the table expects
+              sensor: djangoMessage.device_id || 'unknown',
+              device: djangoMessage.device_id || 'unknown',
+              manual_override: false,
+              ise: djangoMessage.data.ise || null,
+              tds: djangoMessage.data.tds || null,
+              orp: djangoMessage.data.orp || null,
+              ec: djangoMessage.data.ec || null,
+              value: djangoMessage.data.value || null
             };
             
             setSensorData(prev => {

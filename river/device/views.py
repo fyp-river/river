@@ -49,10 +49,10 @@ def toggle_manual_mode(request, pk):
 # --- Dynamic Schema Sync Endpoint for Frontend ---
 
 def get_sensor_schema(request):
-    Sensor = apps.get_model('device', 'Sensor')
+    SensorReading = apps.get_model('device', 'SensorReading')
     fields = []
 
-    for field in Sensor._meta.get_fields():
+    for field in SensorReading._meta.get_fields():
         # Skip reverse and many-to-many fields
         if field.auto_created and not field.concrete:
             continue
@@ -81,6 +81,6 @@ def get_sensor_schema(request):
         fields.append(field_info)
 
     return JsonResponse({
-        "model": "Sensor",
+        "model": "SensorReading",
         "fields": fields
     }, json_dumps_params={"indent": 2})

@@ -9,7 +9,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Info, Cpu, Wifi, WifiOff } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import DeviceDetailsDrawer from '@/components/devices/DeviceDetailsDrawer';
-import { useSensorWebSocket } from '@/hooks/useSensorWebSocket';
+import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
 import { useMapWebSocket } from '@/hooks/useMapWebSocket';
 
 const Dashboard: React.FC = () => {
@@ -18,15 +18,16 @@ const Dashboard: React.FC = () => {
   const [devices, setDevices] = useState<any[]>([]);
   
   // WebSocket connections
-  const sensorWs = useSensorWebSocket();
+  const djangoWs = useDjangoWebSocket();
   const mapWs = useMapWebSocket();
 
   // Generate devices from sensor data
   useEffect(() => {
-    if (sensorWs.allReadings.length > 0) {
-      const stationIds = [...new Set(sensorWs.allReadings.map(reading => reading.stationId))];
+    console.log('djangoWs.sensorData', djangoWs);
+    if (djangoWs.sensorData.length > 0) {
+      const stationIds = [...new Set(djangoWs.sensorData.map(reading => reading.stationId))];
       const generatedDevices = stationIds.map((stationId, index) => {
-        const latestReading = sensorWs.allReadings
+        const latestReading = djangoWs.sensorData
           .filter(reading => reading.stationId === stationId)
           .slice(-1)[0];
         
@@ -78,25 +79,25 @@ const Dashboard: React.FC = () => {
         }
       ]);
     }
-  }, [sensorWs.allReadings]);
+  }, [djangoWs.sensorData]);
 
   const selectedDeviceData = devices.find(device => device.id === selectedDevice) || devices[0];
-  const latestReading = selectedDeviceData?.latestReading || sensorWs.latestReading;
+  const latestReading = selectedDeviceData?.latestReading || (djangoWs.sensorData.length > 0 ? djangoWs.sensorData[djangoWs.sensorData.length - 1] : null);
   
   // Connection status
-  const isConnected = sensorWs.isConnected || mapWs.isConnected;
-  const connectionError = sensorWs.error || mapWs.error;
+  const isConnected = djangoWs.isConnected || mapWs.isConnected;
+  const connectionError = djangoWs.error || mapWs.error;
 
   // Calculate derived metrics from sensor data
   const waterQualityData = latestReading ? {
-    ph: latestReading.pH || 7.0,
-    dissolvedOxygen: latestReading.dissolvedOxygen || 8.0,
-    temperature: latestReading.temperature || 18.5,
-    turbidity: latestReading.turbidity || 2.0,
+    ph: Number((latestReading.pH || 7.0).toFixed(Math.min(4, (latestReading.pH || 7.0).toString().split('.')[1]?.length || 0))),
+    dissolvedOxygen: Number((latestReading.dissolvedOxygen || 8.0).toFixed(Math.min(4, (latestReading.dissolvedOxygen || 8.0).toString().split('.')[1]?.length || 0))),
+    temperature: Number((latestReading.temperature || 18.5).toFixed(Math.min(4, (latestReading.temperature || 18.5).toString().split('.')[1]?.length || 0))),
+    turbidity: Number((latestReading.turbidity || 2.0).toFixed(Math.min(4, (latestReading.turbidity || 2.0).toString().split('.')[1]?.length || 0))),
     // Simulate additional metrics
-    flowRate: 15 + (latestReading.temperature - 18) * 2.5, // Derived from temperature
-    leadLevel: Math.max(0.001, latestReading.turbidity * 0.002), // Derived from turbidity
-    cyanide: Math.max(0.001, (8.5 - latestReading.dissolvedOxygen) * 0.001) // Derived from oxygen
+    flowRate: Number((15 + (latestReading.temperature - 18) * 2.5).toFixed(Math.min(4, (15 + (latestReading.temperature - 18) * 2.5).toString().split('.')[1]?.length || 0))), // Derived from temperature
+    leadLevel: Number((Math.max(0.001, latestReading.turbidity * 0.002)).toFixed(Math.min(4, (Math.max(0.001, latestReading.turbidity * 0.002)).toString().split('.')[1]?.length || 0))), // Derived from turbidity
+    cyanide: Number((Math.max(0.001, (8.5 - latestReading.dissolvedOxygen) * 0.001)).toFixed(Math.min(4, (Math.max(0.001, (8.5 - latestReading.dissolvedOxygen) * 0.001)).toString().split('.')[1]?.length || 0))) // Derived from oxygen
   } : {
     ph: 7.0,
     dissolvedOxygen: 8.0,
@@ -200,7 +201,7 @@ const Dashboard: React.FC = () => {
               <>
                 <span className="text-muted-foreground">|</span>
                 <span className="text-muted-foreground">
-                  Readings: {sensorWs.allReadings.filter(r => r.stationId === selectedDeviceData.latestReading?.stationId).length}
+                  Readings: {djangoWs.sensorData.filter(r => r.stationId === selectedDeviceData.latestReading?.stationId).length}
                 </span>
               </>
             )}

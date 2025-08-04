@@ -2,11 +2,11 @@
 // Django backend configuration
 export const DJANGO_CONFIG = {
   // WebSocket URL for real-time data
-  WEBSOCKET_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/sensors/',
-  MAPS_WEBSOCKET_URL: import.meta.env.VITE_WS_MAPS_URL || 'ws://localhost:8000/ws/maps/',
+  WEBSOCKET_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:8884/ws/sensors/',
+  MAPS_WEBSOCKET_URL: import.meta.env.VITE_WS_MAPS_URL || 'ws://localhost:8884/ws/maps/',
   
   // REST API base URL
-  API_BASE_URL: import.meta.env.VITE_DJANGO_API_URL || 'http://localhost:8000/api/',
+  API_BASE_URL: import.meta.env.VITE_DJANGO_API_URL || 'http://localhost:8884/api/',
   
   // Authentication endpoints
   AUTH_ENDPOINTS: {

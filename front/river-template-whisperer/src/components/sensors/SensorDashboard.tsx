@@ -6,11 +6,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import SensorTable from './SensorTable';
 import WebSocketStatusIndicator from './WebSocketStatusIndicator';
 import { useSensorData } from '@/hooks/useSensorData';
-import { useSensorWebSocket } from '@/hooks/useSensorWebSocket';
+import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
 
 const SensorDashboard: React.FC = () => {
   const { schema, sensors, loading, error, refetch } = useSensorData();
-  const { isConnected, latestReading, allReadings, error: wsError, reconnect } = useSensorWebSocket();
+  const { isConnected, sensorData, error: wsError } = useDjangoWebSocket();
+
+  // Helper function to format numbers to max 4 decimal places
+  const formatSensorValue = (value: any): string => {
+    if (value === null || value === undefined) return '0';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '0';
+    return num.toFixed(Math.min(4, (num.toString().split('.')[1] || '').length));
+  };
 
   return (
     <div className="space-y-6">
@@ -28,7 +36,6 @@ const SensorDashboard: React.FC = () => {
           <WebSocketStatusIndicator 
             isConnected={isConnected}
             error={wsError}
-            onReconnect={reconnect}
           />
           
           {/* Refresh Button */}
@@ -67,11 +74,12 @@ const SensorDashboard: React.FC = () => {
       )}
 
       {/* Live Data Alert */}
-      {latestReading && (
+      {sensorData.length > 0 && (
         <Alert>
           <AlertDescription>
-            🟢 Latest reading received at {new Date(latestReading.timestamp || '').toLocaleTimeString()}
-            {latestReading.device_id && ` from device ${latestReading.device_id}`}
+            🟢 Latest reading received at {new Date(sensorData[sensorData.length - 1].timestamp || '').toLocaleTimeString()}
+            {sensorData[sensorData.length - 1].stationId && ` from device ${sensorData[sensorData.length - 1].stationId}`}
+            {sensorData[sensorData.length - 1].temperature && ` • Temperature: ${formatSensorValue(sensorData[sensorData.length - 1].temperature)}°C`}
           </AlertDescription>
         </Alert>
       )}
@@ -80,8 +88,8 @@ const SensorDashboard: React.FC = () => {
       {schema ? (
         <SensorTable 
           schema={schema} 
-          readings={allReadings.length > 0 ? allReadings : sensors}
-          latestReading={latestReading}
+          readings={sensorData.length > 0 ? sensorData : sensors}
+          latestReading={sensorData.length > 0 ? sensorData[sensorData.length - 1] : null}
         />
       ) : loading ? (
         <div className="flex items-center justify-center py-12">
@@ -96,7 +104,7 @@ const SensorDashboard: React.FC = () => {
 
       {/* Stats */}
       <div className="text-sm text-muted-foreground text-center">
-        Showing {allReadings.length > 0 ? allReadings.length : sensors.length} sensor record{(allReadings.length > 0 ? allReadings.length : sensors.length) !== 1 ? 's' : ''}
+        Showing {sensorData.length > 0 ? sensorData.length : sensors.length} sensor record{(sensorData.length > 0 ? sensorData.length : sensors.length) !== 1 ? 's' : ''}
         {isConnected && (
           <span className="ml-4 text-green-600">
             ● Live connection active

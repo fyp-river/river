@@ -20,6 +20,15 @@ const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
   status = 'neutral',
   type
 }) => {
+  // Helper function to format numbers to max 4 decimal places
+  const formatValue = (val: string | number): string => {
+    if (typeof val === 'string') {
+      const num = parseFloat(val);
+      return isNaN(num) ? val : num.toFixed(Math.min(4, (num.toString().split('.')[1] || '').length));
+    }
+    return val.toFixed(Math.min(4, (val.toString().split('.')[1] || '').length));
+  };
+
   const getIcon = () => {
     switch (type) {
       case 'ph': return <Droplets className="h-5 w-5" />;
@@ -61,7 +70,7 @@ const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
       </div>
       
       <div className="flex items-baseline mt-4">
-        <span className="text-2xl font-semibold">{value}</span>
+        <span className="text-2xl font-semibold">{formatValue(value)}</span>
         <span className="ml-1 text-muted-foreground text-sm">{unit}</span>
       </div>
       
@@ -69,7 +78,7 @@ const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
         <div className="flex items-center mt-1 text-xs">
           {getChangeIcon()}
           <span className={cn("ml-1", getStatusColor(status))}>
-            {Math.abs(change)}% from last reading
+            {Math.abs(change).toFixed(Math.min(4, (Math.abs(change).toString().split('.')[1] || '').length))}% from last reading
           </span>
         </div>
       )}
