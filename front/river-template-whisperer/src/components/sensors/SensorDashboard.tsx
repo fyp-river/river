@@ -7,6 +7,7 @@ import SensorTable from './SensorTable';
 import WebSocketStatusIndicator from './WebSocketStatusIndicator';
 import { useSensorData } from '@/hooks/useSensorData';
 import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
+import { PulseLoader, ClipLoader } from 'react-spinners';
 
 const SensorDashboard: React.FC = () => {
   const { schema, sensors, loading, error, refetch } = useSensorData();
@@ -19,6 +20,10 @@ const SensorDashboard: React.FC = () => {
     if (isNaN(num)) return '0';
     return num.toFixed(Math.min(4, (num.toString().split('.')[1] || '').length));
   };
+
+  // Loading states
+  const isDataLoading = loading || !isConnected || sensorData.length === 0;
+  const isConnecting = !isConnected && !wsError;
 
   return (
     <div className="space-y-6">
@@ -85,17 +90,26 @@ const SensorDashboard: React.FC = () => {
       )}
 
       {/* Sensor Data Table */}
-      {schema ? (
+      {isDataLoading ? (
+        <div className="river-data-card river-glow h-64 flex items-center justify-center">
+          <div className="text-center">
+            <ClipLoader size={40} color="#3B82F6" />
+            <p className="text-sm text-muted-foreground mt-4">
+              {isConnecting ? 'Connecting to sensors...' : 'Loading sensor data...'}
+            </p>
+            {!isConnected && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Waiting for WebSocket connection
+              </p>
+            )}
+          </div>
+        </div>
+      ) : schema ? (
         <SensorTable 
           schema={schema} 
           readings={sensorData.length > 0 ? sensorData : sensors}
           latestReading={sensorData.length > 0 ? sensorData[sensorData.length - 1] : null}
         />
-      ) : loading ? (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Loading sensor schema...</span>
-        </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground">
           Unable to load sensor schema

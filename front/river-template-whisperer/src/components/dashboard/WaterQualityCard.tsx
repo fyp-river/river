@@ -2,6 +2,7 @@
 import React from 'react';
 import { ArrowDown, ArrowUp, Droplets, ThermometerIcon, Activity, Timer, TestTube, FlaskRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PulseLoader } from 'react-spinners';
 
 interface WaterQualityCardProps {
   title: string;
@@ -10,6 +11,7 @@ interface WaterQualityCardProps {
   change?: number;
   status?: 'positive' | 'negative' | 'neutral';
   type: 'ph' | 'oxygen' | 'temperature' | 'flow' | 'lead' | 'turbidity' | 'mercury' | 'Cyanide';
+  loading?: boolean;
 }
 
 const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
@@ -18,7 +20,8 @@ const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
   unit,
   change = 0,
   status = 'neutral',
-  type
+  type,
+  loading = false
 }) => {
   // Helper function to format numbers to max 4 decimal places
   const formatValue = (val: string | number): string => {
@@ -69,18 +72,26 @@ const WaterQualityCard: React.FC<WaterQualityCardProps> = ({
         </div>
       </div>
       
-      <div className="flex items-baseline mt-4">
-        <span className="text-2xl font-semibold">{formatValue(value)}</span>
-        <span className="ml-1 text-muted-foreground text-sm">{unit}</span>
-      </div>
-      
-      {change !== 0 && (
-        <div className="flex items-center mt-1 text-xs">
-          {getChangeIcon()}
-          <span className={cn("ml-1", getStatusColor(status))}>
-            {Math.abs(change).toFixed(Math.min(4, (Math.abs(change).toString().split('.')[1] || '').length))}% from last reading
-          </span>
+      {loading ? (
+        <div className="flex items-center justify-center h-16">
+          <PulseLoader size={8} color="#3B82F6" />
         </div>
+      ) : (
+        <>
+          <div className="flex items-baseline mt-4">
+            <span className="text-2xl font-semibold">{formatValue(value)}</span>
+            <span className="ml-1 text-muted-foreground text-sm">{unit}</span>
+          </div>
+          
+          {change !== 0 && (
+            <div className="flex items-center mt-1 text-xs">
+              {getChangeIcon()}
+              <span className={cn("ml-1", getStatusColor(status))}>
+                {Math.abs(change).toFixed(Math.min(4, (Math.abs(change).toString().split('.')[1] || '').length))}% from last reading
+              </span>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

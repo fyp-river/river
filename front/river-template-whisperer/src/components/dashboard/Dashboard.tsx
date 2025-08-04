@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import DeviceDetailsDrawer from '@/components/devices/DeviceDetailsDrawer';
 import { useDjangoWebSocket } from '@/hooks/useDjangoWebSocket';
 import { useMapWebSocket } from '@/hooks/useMapWebSocket';
+import { PulseLoader, ClipLoader } from 'react-spinners';
 
 const Dashboard: React.FC = () => {
   const [selectedDevice, setSelectedDevice] = useState('device-1');
@@ -88,6 +89,10 @@ const Dashboard: React.FC = () => {
   const isConnected = djangoWs.isConnected || mapWs.isConnected;
   const connectionError = djangoWs.error || mapWs.error;
 
+  // Loading states
+  const isDataLoading = !isConnected || djangoWs.sensorData.length === 0;
+  const isConnecting = !isConnected && !connectionError;
+
   // Calculate derived metrics from sensor data
   const waterQualityData = latestReading ? {
     ph: Number((latestReading.pH || 7.0).toFixed(Math.min(4, (latestReading.pH || 7.0).toString().split('.')[1]?.length || 0))),
@@ -120,7 +125,7 @@ const Dashboard: React.FC = () => {
               <WifiOff className="h-4 w-4 text-red-500" />
             )}
             <span className="text-sm text-muted-foreground">
-              {isConnected ? 'Live data from sensors' : 'Offline - no sensor data'}
+              {isConnected ? 'Live data from sensors' : isConnecting ? 'Connecting to sensors...' : 'Offline - no sensor data'}
             </span>
           </div>
         </div>
@@ -214,72 +219,125 @@ const Dashboard: React.FC = () => {
       
       {/* Water quality metrics - now using real sensor data */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <WaterQualityCard 
-          title="pH Level" 
-          value={waterQualityData.ph} 
-          unit="pH" 
-          change={latestReading ? (waterQualityData.ph - 7.0) : 0} 
-          status={waterQualityData.ph >= 6.5 && waterQualityData.ph <= 8.5 ? "positive" : "negative"} 
-          type="ph" 
-        />
-        <WaterQualityCard 
-          title="Dissolved Oxygen" 
-          value={waterQualityData.dissolvedOxygen} 
-          unit="mg/L" 
-          change={latestReading ? (waterQualityData.dissolvedOxygen - 8.0) : 0} 
-          status={waterQualityData.dissolvedOxygen >= 6 ? "positive" : "negative"} 
-          type="oxygen" 
-        />
-        <WaterQualityCard 
-          title="Temperature" 
-          value={waterQualityData.temperature} 
-          unit="°C" 
-          change={latestReading ? (waterQualityData.temperature - 18.5) : 0} 
-          status={waterQualityData.temperature < 25 ? "positive" : "negative"} 
-          type="temperature" 
-        />
-        <WaterQualityCard 
-          title="Turbidity" 
-          value={waterQualityData.turbidity} 
-          unit="NTU" 
-          change={latestReading ? (waterQualityData.turbidity - 2.0) : 0} 
-          status={waterQualityData.turbidity < 5 ? "positive" : "negative"} 
-          type="turbidity" 
-        />
-        <WaterQualityCard 
-          title="Flow Rate" 
-          value={waterQualityData.flowRate} 
-          unit="m³/s" 
-          change={latestReading ? (waterQualityData.flowRate - 20) : 0} 
-          status="neutral" 
-          type="flow" 
-        />
-        <WaterQualityCard 
-          title="Lead Level" 
-          value={waterQualityData.leadLevel} 
-          unit="mg/L" 
-          change={latestReading ? (waterQualityData.leadLevel - 0.005) : 0} 
-          status={waterQualityData.leadLevel < 0.01 ? "positive" : "negative"} 
-          type="lead" 
-        />
+        {isDataLoading ? (
+          // Loading spinners for water quality cards
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="river-data-card river-glow min-h-32 flex items-center justify-center">
+              <div className="text-center">
+                <PulseLoader size={8} color="#3B82F6" />
+                <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            <WaterQualityCard 
+              title="pH Level" 
+              value={waterQualityData.ph} 
+              unit="pH" 
+              change={latestReading ? (waterQualityData.ph - 7.0) : 0} 
+              status={waterQualityData.ph >= 6.5 && waterQualityData.ph <= 8.5 ? "positive" : "negative"} 
+              type="ph" 
+            />
+            <WaterQualityCard 
+              title="Dissolved Oxygen" 
+              value={waterQualityData.dissolvedOxygen} 
+              unit="mg/L" 
+              change={latestReading ? (waterQualityData.dissolvedOxygen - 8.0) : 0} 
+              status={waterQualityData.dissolvedOxygen >= 6 ? "positive" : "negative"} 
+              type="oxygen" 
+            />
+            <WaterQualityCard 
+              title="Temperature" 
+              value={waterQualityData.temperature} 
+              unit="°C" 
+              change={latestReading ? (waterQualityData.temperature - 18.5) : 0} 
+              status={waterQualityData.temperature < 25 ? "positive" : "negative"} 
+              type="temperature" 
+            />
+            <WaterQualityCard 
+              title="Turbidity" 
+              value={waterQualityData.turbidity} 
+              unit="NTU" 
+              change={latestReading ? (waterQualityData.turbidity - 2.0) : 0} 
+              status={waterQualityData.turbidity < 5 ? "positive" : "negative"} 
+              type="turbidity" 
+            />
+            <WaterQualityCard 
+              title="Flow Rate" 
+              value={waterQualityData.flowRate} 
+              unit="m³/s" 
+              change={latestReading ? (waterQualityData.flowRate - 20) : 0} 
+              status="neutral" 
+              type="flow" 
+            />
+            <WaterQualityCard 
+              title="Lead Level" 
+              value={waterQualityData.leadLevel} 
+              unit="mg/L" 
+              change={latestReading ? (waterQualityData.leadLevel - 0.005) : 0} 
+              status={waterQualityData.leadLevel < 0.01 ? "positive" : "negative"} 
+              type="lead" 
+            />
+          </>
+        )}
       </div>
       
       {/* Main charts section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <WaterLevelChart />
+          {isDataLoading ? (
+            <div className="river-data-card river-glow h-64 flex items-center justify-center">
+              <div className="text-center">
+                <ClipLoader size={30} color="#3B82F6" />
+                <p className="text-sm text-muted-foreground mt-2">Loading water level chart...</p>
+              </div>
+            </div>
+          ) : (
+            <WaterLevelChart />
+          )}
         </div>
-        <WaterFlowGauge 
-          value={waterQualityData.flowRate} 
-          maxValue={50} 
-          title="Current Flow Rate" 
-        />
+        <div>
+          {isDataLoading ? (
+            <div className="river-data-card river-glow h-64 flex items-center justify-center">
+              <div className="text-center">
+                <PulseLoader size={8} color="#3B82F6" />
+                <p className="text-sm text-muted-foreground mt-2">Loading flow gauge...</p>
+              </div>
+            </div>
+          ) : (
+            <WaterFlowGauge 
+              value={waterQualityData.flowRate} 
+              maxValue={50} 
+              title="Current Flow Rate" 
+            />
+          )}
+        </div>
       </div>
       
       {/* Second row of visualizations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <PollutionChart />
-        <StationsMap />
+        {isDataLoading ? (
+          <>
+            <div className="river-data-card river-glow h-64 flex items-center justify-center">
+              <div className="text-center">
+                <ClipLoader size={30} color="#3B82F6" />
+                <p className="text-sm text-muted-foreground mt-2">Loading pollution chart...</p>
+              </div>
+            </div>
+            <div className="river-data-card river-glow h-64 flex items-center justify-center">
+              <div className="text-center">
+                <PulseLoader size={8} color="#3B82F6" />
+                <p className="text-sm text-muted-foreground mt-2">Loading stations map...</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <PollutionChart />
+            <StationsMap />
+          </>
+        )}
       </div>
       
       {/* Device details drawer */}
